@@ -1,0 +1,596 @@
+---
+title: 'Assignment Title: Data Visualisation Portfolio and Critique'
+author: "Georgina Wager"
+date: "04/03/2021"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This project is part of the assessment for the module C7083 Data Visualisation and Analytics, that is ran at Harper Adams University College by Joe Roberts and Ed Harris for the MSc Course: Data Science for Global Agriculture, Food and Environment.
+
+The task of this project is to use three allocated data sets that we have been given and produce four data visualisations for each before providing a critique of both a good and a bad graph. 
+
+Github Name: georginaanna
+Repository Name: Data-Visualisation
+
+### Part 1: Australian Fires Dataset
+
+The data is accessible from https://github.com/rfordatascience/tidytuesday/tree/master/data/2020/2020-01-07.The Australian Fires dataset contains information on rainfall, temperature, and fires. The fire data is only available for 2019 and 2020, and contains 34,270 observations, however this dataset is based largely on approximations on the actual location of fires and is gathered by NASA. Variables within this data set are latitude, longitude, brightness (temperature of the fire pixel measured in Kelvin), scan and track (actual pixel size of the image of the fire), track, acquired date and acquired time (the time the fire was spotted), satellite (showing location information, A = Aqua and T = Terra), confidence (the quality of individual hotspot/fire pixels that estimates range between 0 and 100%), version (identifies the collection method), bright_t31(channel 31 brightness shows the temperature of the fire, pixel measured in Kelvin), frp (depicts the pixel-integrated fire radiative power in MW (megawatts)) and finally daynight (indicating when the image was taken in the day or at night). 
+
+For climate data, temperature and rainfall data was gathered from the Australian Bureau of Meterology (BoM). Several weather stations were chosen, based on their proximity to major Australian cities. The temperature data set contains 528,278 observations and provides five variables. Variables include the city name, the year (from 1910 up until 2019), the temperature (in degrees Celsius), the temperature type (min or max) and the site name (where the temperature was taken). 
+
+Finally, we have the rainfall data set that contains 179,273 observations and 11 columns. Variables include the station code, station name, the city name, the year, month and day, rainfall (mm), rain period (how many days was it collected across), the quality (certified quality or not) and the latitude and longitudes. 
+
+Between 2019 and 202 Australia had the worst bushfire outbreak on record, destroying 126,000 126,000 square kilometres of land and thousands of buildings and killing at least 33 people. Bushfires posed a huge risk animal because of injury due to flames, loss of habitats and feed sources. Studies suggest that hot, dry and windy conditions made these fires bigger and more intense than normal. Suggesting that temperature and rainfall are key contributors to the dreadful bushfire season (BBC, 2020). 
+
+Firstly, lets identify the pattern of rainfall between 1858 and 2019. 
+
+```{r, include=FALSE}
+## Loading in the data set
+tuesdata <- tidytuesdayR::tt_load('2020-01-07') ## Loading the data 
+tuesdata <- tidytuesdayR::tt_load(2020, week = 2) 
+
+rainfall <- tuesdata$rainfall ## Pulling the rainfall data set into R
+temperature <- tuesdata$temperature ## Pulling the temperature dataset into R
+fire <- tuesdata$MODIS_C6_Australia_and_New_Zealand_7d ## Pulling the fire data set into R 
+```
+
+### Visulisation One: Average rainfall across Australia per annum between 1858 and 2019. 
+
+```{r, echo=FALSE}
+library(dplyr) ## loading required packages 
+library(tidyverse)
+annualrainfall = rainfall %>% group_by(year) %>% tally(rainfall) %>% as.data.frame() ## creating a new data frame called "annualrainfall" that is the average rainfall for each year 
+# Plot x and y
+par(mar = c(5,4,4,3),font = 12,font.axis = 14, 
+    fg = "black",  col.axis = "azure4", cex.axis = 1, bg="white") ## allocating plot look and size
+plot(annualrainfall$year,annualrainfall$rainfall,## distinguishing the x and y variables 
+     main="Average rainfall across Australia per annum between 1858 and 2019.",## labeling 
+     sub = "Source: Australian Bureau of Meterology (BoM)",
+     col="blue", ## circle colours and sizes 
+     cex=1,
+     pch=16,
+     xlab = "Rainfall (mm)", 
+     ylab = "Year",
+     lwd=1) 
+
+```
+
+This plot clearly demonstrates that average rainfall has been increasing continuously over hundreds of years. However, the plot does not show much detail as it does not take into consideration the differing rainfalls over different cities, nor does it look close enough into the years closer to the outbreak of bush fires. 
+
+Next let’s investigate this further by looking into more detail for each date closer to the bushfire outbreaks.
+
+### Visulisation Two: Average rainfall over time between 2000 and 2019. 
+
+```{r, echo=FALSE}
+## Creating another plot
+ 
+library(ggplot2) ## load the library 
+
+new <- filter(rainfall, year >= "2000") ## create a new data frame that only contains years above 2000
+finalone <- rainfall %>% filter(year == "2019") ## create a new subset of data that only contains rainfall data for 2019
+
+ggplot(new, aes(x = year, ## create a new plot
+                       y = rainfall)) +
+  geom_line(color = "grey90") + ## provide a color for the lines
+  geom_line(data = finalone, color = "#10a1c1",## create a different color for 2019 data
+            size = 1) +
+  theme_minimal() + ## allocate a theme 
+    labs(title = "Rainfall",## provide a title
+         subtitle = "Average Rainfall between 2000-2019 in Australia",
+       y = "Rainfall (mm)", x = "Year") + ## Label the axis
+  theme(
+    panel.grid = element_blank()) 
+    
+```
+
+This tells us that the amount of rainfall in 2019, is not as different as the previous year in 2018 and is more compared to 2017. However, there is no data for 2020 and therefore there could have been significantly less rainfall in that year. 
+
+It would be helpful to consider the temperature for each year and between the Australian cities. The shiny app made shows the temperature distribution for both Sydney and Perth in a given year. 
+
+### Visulisation Three: Shiny App for comparing temperatures between two different years
+
+Shiny app code is available in the Github: https://github.com/georginaanna/Data-Visualisation/blob/main/Australian%20Temperatures.R
+
+Now we have a lot of information regarding the climate of Australia, lets locate the distribution of fires across Australia and use the confidence variable to show the certainty of whether that fire existed in that specific location. 
+
+### Visulisation Four: Fire location and confidence information 
+
+```{r, include=FALSE}
+## creating an interactive map
+library(leaflet) ## load the leaflet library
+
+data(fire) ## load the data
+fire <- head(fire, 34720)
+```
+
+
+```{r, echo=FALSE}
+
+# Create a color palette for differing confidence levels
+mypalette <- colorNumeric(palette="GnBu", domain=fire$confidence, na.color="transparent")
+
+## Prepare the text for the tooltip:
+mytext <- paste(
+   "Confidence: ", fire$confidence, sep="") %>%
+  lapply(htmltools::HTML)
+
+## creating the Final Map
+m <- leaflet(fire) %>% 
+  addTiles()  %>% ## add the basic tile map (the one with lines)
+  setView(lat=-27, lng=170 , zoom=4) %>% ## establishing the initial view
+  addCircleMarkers(~longitude, ~latitude, ## add the circle markers based on long and lat from fires dataset
+    fillColor = ~mypalette(confidence), fillOpacity = 0.7, ## alter the color of the circle according to the confidence value
+    color="white", radius=10, stroke=FALSE,## establish the features of the circle 
+    label = mytext,
+    labelOptions = labelOptions(style = list("font-weight" = "normal", padding = "3px 8px"), textsize = "13px", direction = "auto")## label the points on the graph
+  ) %>%
+  addLegend(pal=mypalette, values=~confidence, opacity=0.9, title = "Confidence", position = "bottomright") ## Create a legend
+
+m 
+
+
+```
+
+The north and east coast of Australia were a prime location for the fires and have a good level of confidence, compared to a few fires in the west coast of Australia that have very low confidence. The reason for this could be due to allocation of resources for viewing the fires, for example, because of the density of fires around the north and east coast compared to the west coast there was more investment in technology. In addition, the population across the north and east coast of Australia is higher than the west coast, insinuating that more was invested in gaining insight to these fires so they could limit the damage to built up areas with higher population densities. 
+
+### Part Two: Crop Yields
+
+```{r, include=FALSE}
+tuesdata <- tidytuesdayR::tt_load('2020-09-01') ## data interested in
+tuesdata <- tidytuesdayR::tt_load(2020, week = 36) ## week interested in by number 
+
+keycropyields <- tuesdata$key_crop_yields ## gathering the key crop yields data 
+fertiliser <- tuesdata$cereal_crop_yield_vs_fertilizer_application ## gathering the fertilizer data
+```
+
+Data was collected from "Our World in Data" and is located at https://github.com/rfordatascience/tidytuesday/tree/master/data/2020/2020-09-01. This subset of data is part of the tidy Tuesday initiative for Global Crop Yields.
+
+The data contains two data sets, this is "keycropyields" and "fertiliser". The "keycropyields" data set contains 13,075 observations, with yield information of 12 different crops in tonnes per hectare from 249 countries between 1961 and 2018. The "fertiliser" dataset has 11,965 observations that contains information on year, nitrogen fertilizer use (kilograms per hectare) and cereal yield (tonnes per hectare) from 240 countries between 1961 and 2018. Note this dataset is made up of combined cereal yields such as wheat and barley, where as the "keycropyields" data set provides individual yield information for wheat and barley. Cereal is the single crop for the fertiliser data set. 
+
+Global crop yields are a key point of interest in current times, mainly because crops are a staple part of the human diet, however in recent years a huge emphasis (and rightly so) has been placed on sustainable food production. This is mainly due to concerns that current practices would not be possible for many more moons, and with the global population increase annually of 83 million during the last 10 years (Hovhannisyan and Grigoryan, 2016), food production must be efficient. With the increasing population, an increase in fertile land does not occur, therefore farming practices must be efficient across the globe to continue to provide for this ever "growing" world. 
+
+This exploration will intend to demonstrate the pattern that has occurred over the years in general for global production. Before identifying if fertilizer usage in cereals has impacted cereal yield over the yearly spread of the data. Further to this it will be interesting to gain information of the variation in different crop yields with regards to there sociodemographic status. 
+
+### Tidying the data 
+
+The "keycropyields" data needs to have a single column for crop and a second column for yields. This will convert the data frame from having 14 variables to 5 variables. This will clean the data and provide more efficient data analysis. The "Janitor" library was used to change the names of columns from upper case and lower case to just lower case. This was primarily done to make it easier to identify certain columns. In addition the " tonnes per hectare" words that followed the crop name was removed to make the crops appear more clearer. This process will produce a new data set called "newyields".
+
+The "newyields" data set provides 5 variables, the "code" variable is an abbreviated version of the country. It contains yield data on 12 different crops from 249 countries, between 1961 to 2018. The variables were "entity" this represented the country, the "year", this represented the average yield of a particular crop for that specific year, the "crop" represents the crop, and the "yield" is the average for that yield in tonnes per hectare. 
+
+
+```{r, include=FALSE}
+library(janitor) ## loading the janitor library
+
+newyields <- keycropyields %>% ##creating a new data frame called "newyields" using the key crop yields dataset
+  janitor::clean_names() %>% ## turn all the column names into lower case
+  pivot_longer(4:14, ## take columns four to fourteen 
+    names_to = "crop", values_to = "yield"## turn them into a new column called crops and have one column called yields
+  ) %>%
+  mutate(crop = str_remove(crop, "_tonnes_per_hectare")) ## remove the "tonnes per hectare" that shows after each crop name
+
+newyields ## check out the new data frame
+
+```
+
+```{r, include=FALSE}
+## Gaining insight into the data 
+## How many countries?
+unique(newyields$entity) ## 249
+## How many Crops?
+unique(newyields$crop) ## 12 crops
+## Over how many years
+unique(newyields$year) ## over 59 years
+## How many countries?
+unique(fertiliser$Entity) ## 240
+## Over how many years
+unique(fertiliser$Year) ## over 59 year
+
+```
+
+
+```{r, include = FALSE}
+## creating a new data frame that only includes the average yield for the worlds crops
+world <- newyields %>% filter(entity == "World")
+
+```
+
+### Visulisation One: The global tonnage of the combined crops over the years
+
+```{r, echo=FALSE}
+
+annualproduction = world %>% group_by(year) %>% tally(yield) %>% as.data.frame() ## tally the yields for each year and name is "annualproduction"
+# Plot x and y
+par(mar = c(5,4,4,3),font = 12,font.axis = 14, 
+    fg = "black",  col.axis = "azure4", cex.axis = 1, bg="white") ## plot characteristics 
+plot(annualproduction$year,annualproduction$yield,## determining the x and y values 
+     main="Tonnage of combined crops per hectare between 1961 and 2018.",
+     sub = "Source: Our World in Data",
+     col="deeppink",
+     cex=1.5,
+     pch=16,
+     xlab = "Production (tonnes per hectare)", 
+     ylab = "Year",
+     lwd=1)
+
+```
+
+The "world" data set is pulled from "newyields" data, but this data just contains information on average world yield data for all crops. This graph demonstrates that since 1961 the worlds global crop output has increased dramatically. This demonstrates that production has grown but this could be down to a variety of factors such as increased investment in machinery, improved education, or even increased fertiliser usage. Next, we have some data on fertiliser usage so we can investigate if fertiliser usage has an impact on yields however, we can only look at this for cereal crops. 
+
+### Visulisation Two: The relationship between cereal yield and fertiliser use
+
+```{r, include=FALSE}
+
+world1 <- fertiliser %>% filter(Entity == "World") ## creating a new data frame called world1
+## "world1" contains 58 rows from 1961 and 2018. Not many data points on nitrogen usage
+x <- world1$`Nitrogen fertilizer use (kilograms per hectare)` ## assigning the x variable
+y <- world1$`Cereal yield (tonnes per hectare)`## assigning the y variable 
+
+# Plot with main and axis titles
+plot(x, y, main = "The relationship between cereal yield and fertiliser use.",
+     xlab = "Nitrogen fertilizer use (kilograms per hectare)", ylab = "Cereal yield (tonnes per hectare)",
+     pch = 19, frame = FALSE) ## chyange the point shape with pch = 19 
+```
+
+```{r, echo=FALSE}
+
+# Add regression line
+plot(x, y, main = "The relationship between cereal yield and fertiliser use.",
+     xlab = "Nitrogen fertilizer use (kilograms per hectare)", ylab = "Cereal yield (tonnes per hectare)",
+     pch = 19, frame = FALSE)
+abline(lm(y ~ x, data = world1), col = "blue")
+
+```
+
+The above plot demonstrates the relationship between cereal yield in tonnes per hectare and fertilizer use in kg per hectare. From the graph it would suggest that there is a positive correlation between the two however it is not necessarily a strong one. The data that has been used for this graph is a subset of the fertilizer data that only contains "world" information. 
+
+### Visulisation Three: Boxplot comparing the yields of certain crops by least developed countries and Europe
+
+```{r, echo = FALSE}
+## creating a new plot that looks at individual crops 
+## ggplot
+
+windowsFonts("Arial" = windowsFont("Arial")) 
+
+dataframe1 <- newyields %>% filter(entity == "Least Developed Countries" | entity == "Europe") ## creating a new data frame with only devloping countries and Europe a developed country 
+dataframe2 <- dataframe1 %>% filter(crop == "wheat" | crop == "rice" | crop == "maize"
+                                  | crop == "soybeans" | crop == "barley" | crop == "beans")
+## Remove these two crops: cassava cocoa_beans
+
+library(RColorBrewer) ## color palettes 
+
+dataframe3 = rename(dataframe2, Region = entity) ## to change the name of the legend 
+
+cropplot <- ggplot(dataframe3, aes(reorder(crop, yield), y = yield, fill = Region)) + ## creating a plot using the data frame with the correct crops and locations
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Yield (tonnes per hectare)",
+                           breaks = seq(0, 8, 1),
+                           limits=c(0, 8)) +
+        scale_x_discrete(name = "Crop") +
+        ggtitle("Boxplot comparing the yields of certain crops by different regions") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 12, face = "bold"),
+              text = element_text(size = 12),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 11),
+               legend.position = "bottom") +
+        scale_fill_brewer(palette = "Accent")
+cropplot
+
+```
+
+Based on this boxplot it is evident that crops grown in Europe, which is filled with economically developed countries have better yields than that those grown in less economically developed countries. The growing of crops in Europe is largely due to the demand from the food service industry and the advancements in technology meaning that growing of crops is done on a large scale as a business, compared to least economically developed countries where the growing of crops is mostly individual small holdings providing feed for themselves. However Europe does have more variation in yields compared to least developed countries, this could be due to threats such as black grass and the extreme variation in weather patterns that Europe has seen. 
+
+Next lets investigate further the differing yields between countries instead of just whole regions like Europe. 
+
+### Visulisation Four: The distribution of cereal yields across the globe in 2018. 
+
+```{r, include = FALSE}
+library(flexdashboard) ## load data libraries 
+library(highcharter)
+library(tidyverse)
+library(mosaicData)
+data(Countries) ## load the countries dataset 
+
+## next remove all of the non countries from the dataset 
+newdata2 <- fertiliser %>% filter(Entity != "Least Developed Countries" & Entity != "Europe" & Entity != "Central America" &
+                                    Entity != "Belgium-Luxembourg" & Entity != "Africa" & Entity != "Americas" & Entity != "Asia" & 
+                                    Entity != "Asia, Central" & Entity != "Eastern Africa" & Entity != "Eastern Asia" & 
+                                    Entity != "Eastern Europe" & Entity != "European Union" & Entity != "Europe, Western" & 
+                                    Entity != "Land Locked Developing Countries" & Entity != "Low Income Food Deficit Countries" & 
+                                    Entity != "Micronesia (region)" & Entity != "Middle Africa" & Entity != "Western Africa" & 
+                                    Entity != "Western Asia" & Entity != "Southern Asia" & Entity != "Sudan (former)" & 
+                                    Entity != "Australia & New Zealand" & Entity != "American Samoa" & 
+                                    Entity != "South America" & Entity != "World" & Entity != "Ethiopia PDR")
+
+newdata3 <- fertiliser %>% filter(Year == 2018) ## only include information for 2018 
+
+newdata3 <- rename(newdata3, c(Country = "Entity")) ## rename entity to country 
+
+crops <- newdata3 %>% ## create a new object called crops using "newdata3"
+  select(-c(Code, Year)) %>% ## select the country code and year 
+  group_by(Country) %>% ## group by country 
+  summarise_at(vars(-group_cols()), sum,na.rm=TRUE) %>%
+  mutate(total = rowSums(.[,2:3])) ## summarise the cereals yield column 
+
+crops$Country[crops$Country == "Tanzania"] <- "United Republic of Tanzania" ## rename some countries 
+crops$Country[crops$Country == "Iran"] <- "Iran (Islamic Republic of)" ## rename some countries 
+
+crops1 <- crops %>% ## create a new data frame merging country information and yield information 
+  inner_join(Countries, by = c("Country"="maptools"))
+
+crops1
+
+```
+
+
+```{r, echo=FALSE}
+
+hcmap(
+  "custom/world-robinson-lowres", ## map background 
+  data = crops1, ## allocate the data 
+  name = "Cereal Yield (tonnes per hectare)", ## create hoovering text 
+  value = "total",
+  borderWidth = 0,
+  nullColor = "#d3d3d3", ## map colour  
+  joinBy = c("name", "Country")
+  )%>%
+  hc_add_theme(hc_theme_elementary()) ## theme 
+
+```
+
+This map highlights the the high yields in the more economically developed countries, especially the netherlands that seems to have the highest cereal yields.  
+
+
+### Part three: The San Francisco Trees Dataset
+
+```{r, include=FALSE}
+tuesdata <- tidytuesdayR::tt_load('2020-01-28') ## data location 
+tuesdata <- tidytuesdayR::tt_load(2020, week = 5)
+
+sf_trees <- tuesdata$sf_trees ## load the data 
+
+```
+
+```{r, include = FALSE}
+
+library(tidyverse)
+library(here)
+library(pryr)
+library(visdat)
+library(skimr)
+library(lubridate)
+library(leaflet)
+
+```
+
+The data is accessible from https://github.com/rfordatascience/tidytuesday/tree/master/data/2020/2020-01-28.
+The San Francisco Trees data set contains information on the tress located in San Francisco. The dataset contains basic information on the tree such as the genetic name, the day planted and the service approach. Additional information is available for the site of the tree such as if it is in a park or sidewalk, and the size of the plot. The tree ID is assisted with the address and longitude and latitude of the tree. 
+
+Firstly, we will check all the data to ensure that the main locations are solely in San Francisco.
+
+### Visualization One: Plotting the location of the trees. 
+
+```{r, echo=FALSE}
+## creating a plot of the tree locations in base r
+par(mar = c(5,4,4,3),font = 12,font.axis = 14, 
+    fg = "black",  col.axis = "azure4", cex.axis = 1, bg="white")
+plot(sf_trees$longitude, sf_trees$latitude, ## plotting longitude and latitude
+     main="Location of the trees within the dataset",
+     sub = "Source: ",
+     col="deeppink",
+     cex=1.5,
+     pch=16,
+     xlab = "Longitude", 
+     ylab = "Latitude",
+     lwd=1)
+
+## this graph tells us that there is a portion of coordinates that arent in san fransico 
+
+```
+
+This plot clearly demonstrates a cluster of points that are not in San Francisco. Therefore, we must remove the outliers so the data just contains San Francisco information, these could have been typos.  The new data set called “trees” only contains trees that fall with a longitude of less than minus 130 and latitudes between 37.6 and 40. 
+Further data cleaning can also take place here through making the missing values explicit and separate species into scientific and common names. 	
+
+```{r, include=FALSE}
+
+newtrees <- sf_trees %>%
+  filter(longitude > -130, ## filtering out the locations that arent in san fransico as outlined on the previous graph 
+         between(latitude, 37.6, 40)) %>% ## removing the outliers
+  mutate(species = ifelse(species %in% c("Tree(s) ::", "::"), NA_character_, species)) %>% ## identifying missing values
+  separate(species,
+           into = c("science_name", "common_name"), ## separating species into two columns
+           sep = "::") %>%
+  mutate_at(vars(science_name, common_name), str_squish) %>% ## removing unnecessary characters 
+  mutate(common_name = ifelse(common_name == "", science_name, common_name)) ## using scientific names for common names when there is no common name
+
+
+```
+
+Now we have the right longitudes and latitudes we can plot them on the map of San Francisco. 
+
+```{r, include=FALSE}
+## How many unique species
+unique(newtrees$common_name) ## 562 species 
+```
+
+### Visulisation Two: The distribution of trees around San Francisco
+
+```{r, include=FALSE}
+## Creating our base map 
+library(sf) ## load library sf 
+temp_download <- tempfile() ## get zip files from US census
+download.file("https://www2.census.gov/geo/tiger/TIGER2017//ROADS/tl_2017_06075_roads.zip", temp_download) ## download the zip
+
+temp_unzip <- tempfile() ## Creating a temp directory 
+unzip(temp_download, exdir = temp_unzip) ## unzipping the file 
+
+sf_roads <- read_sf(paste0(file.path(temp_unzip), "/tl_2017_06075_roads.shp")) ## read unzipped file
+
+```
+
+## Mapping the dirtribution of trees in San Fransico
+
+```{r,echo=FALSE}
+## Locating the distribution of trees no matter what the species in San Francisco
+map <- newtrees %>% ## creating a new map 
+  ggplot() +
+  geom_sf(data = sf_roads, col = "grey90", alpha = 0.7) + ## base colour of the map
+  geom_point(
+    aes(longitude, latitude),## plotting the latitudes and longitues 
+    shape = ".",
+    alpha = 0.5,
+    col = "brown" ## color of the points plotted 
+  ) +
+  coord_sf() +
+  labs(title = "San Francisco's tree locations") +
+  theme_void()
+
+map ## view the map 
+
+```
+
+As expected, because San Francisco is a built-up area, and tree locations are up and down the sidewalks. We can see some clear patterns, like a concentration of trees along a road in the western part of the city that is Sunset Boulevard.
+
+Now we have the distribution of the trees we can look further into the species, by focusing on the four most common tree species. 
+
+### Visulisation Three: The distribution of the four most common tree species in San Francisco 
+
+```{r, echo=FALSE}
+## Plotting different maps for the most common species and their location 
+tree1 <- newtrees %>% ## creating a new object using "tree1"
+  mutate(
+    common_name = ifelse(
+      common_name == "Indian Laurel Fig Tree 'Green Gem'", ## shortening the name of the Indian Laurel Fig
+      "Indian Laurel Fig",
+      common_name
+    ),
+    common_name = fct_lump(common_name, 4) ## getting the four most common species
+  ) %>%
+  filter(!is.na(common_name), common_name != "Other") %>% ## filtering out the common names 
+  add_count(common_name, name = "tree_count") %>%
+  mutate(common_name = fct_reorder(common_name,-tree_count)) %>% ## finding the number of points 
+  ggplot() +
+  geom_sf(data = sf_roads, col = "grey90", alpha = 0.5) + ## choosing the roads as a template data set 
+  geom_point(
+    aes(longitude, latitude),## plotting the location of the tree species 
+    shape = ".",
+    alpha = 0.5,
+    col = "brown"
+  ) +
+  facet_wrap( ~ common_name) + ## Four different graphs (one for each species) 
+  coord_sf() +
+  labs(title = "Where are San Francisco's trees?",
+       subtitle = "Showing the four most common tree species") +
+  theme_void() +
+  theme(
+    plot.subtitle = element_text(margin = margin(b = 4, unit = "pt")),
+    strip.text = element_text(size = 8, margin = margin(
+      t = 2, b = 2, unit = "pt"
+    ))
+  )
+
+tree1 ## load the new map 
+
+
+```
+
+The most common tree species are the Sycamore: London Plane, the New Zealand Xmas Tree, the Brisbane Box and the Swamp Myrtle. The Sycamore: London Plane is mainly located in the north east, and this is like the Brisbane Box. However, the New Zealand Xmas Tree and the Swamp Myrtle are more evenly distributed across San Francisco. 
+
+### Visulisation Four: Relationship between the age of a tree and the diameter of the tree at breast height. 
+
+Next lets investigate if there is a relationship between a single species age and there diameter at breast height. 
+
+Generally, I would expect the diameter to be bigger the older the tree, and lets add the caretaker used on this graph.
+
+To do this we first need to create a new column of the most recent date, this can then be used with the date planted to gain a rough estimate on the age of the tree. 
+
+```{r, include=FALSE}
+## Need to make a new column called age
+## Add a new column called end date 
+newtrees$enddate <- c("2021-28-02") ## create a new column called end date 
+as.Date(newtrees$enddate,"YYYY-MM-DD") ## make sure it is formated as a date 
+newtrees$enddate <- as.Date(newtrees$enddate, "2021-28-02") ## make sure it is the most recent date 
+
+## producing another numerical variable called age 
+newtrees$age <- as.numeric(difftime(newtrees$enddate,newtrees$date), units = ("days")) ## age variable is in days 
+class(newtrees$age) ## class is difftime 
+
+as.numeric(difftime("2015-12-07", "2015-12-05"), units="weeks")
+
+## remove nas
+newdata <- na.omit(newtrees)
+
+## Just filter out a single species
+
+
+tree <- newtrees %>% filter(common_name == "American Sweet Gum")
+
+##  & ##shape=common_name, alpha=common_name, size=common_name, color=common_name)
+
+# load ggplot2
+library(ggplot2)
+library(hrbrthemes)
+library(plotly)
+
+hrbrthemes::import_roboto_condensed() 
+
+tree3 = rename(tree, Caretaker = caretaker)
+
+```
+
+
+
+```{r, echo=FALSE}
+# A basic scatterplot with color depending on Species
+
+plot1 <- tree3 %>%
+  mutate(text = paste("Age: ", age, " dbh: ", dbh, sep=" ")) %>% ## Creating the text 
+ggplot(aes(x=age, y=dbh, color = Caretaker, text=text)) + ## adding the information to the plot 
+    geom_point() + ## adding the points 
+    theme_ipsum() +  ## allocate a theme 
+    labs(title = "Age and DBH by caretaker for American Sweet Gum",## provide a title
+         y = "Diameter at Breast Height (dbh)", 
+         x = "Age (days)") + ## Label the axis
+  theme(panel.grid = element_blank())
+
+ggplotly(plot1, tooltip="text") ## making the graph interactive 
+
+
+```
+
+As we can see from the above graph there is little relation between tree age and dbh, however this could vary between species. It also shows that the most common care for this particular tree species is Private. 
+
+### Critique
+
+### Critique: Bad Visulisation
+Bad Graph from: K Roeder (1994) DNA fingerprinting: A review of the controversy (with discussion). Statistical Science 9(2):222-278, Figure 9, part b. 
+
+This visulisation can be in the github under "bgraph.png"
+
+The graph is located as figure 9 in the journal article DNA fingerprinting: A review of the controversy (with discussion) in Statistical Science. Firstly, the 3D element of this graph is not necessary, and takes your eyes away from what the data is trying to tell you. The ribbon effect takes up a lot of space, and the ribbon does not need to be touching. In addition, the use of shading has made it difficult to decipher between Korean and Vietnamese values, this could partially be down to printing quality however the use of four different line types (solid, dashed, dotted, dash-dotted) or colour if allowed would have provided more clarity on each region. The underbelly of the line is also white, so if you look at this point (3, 0.04) on the graph it is difficult to understand if it is representing Chinese or Japanese data. There is also no x axis or y axis labels to clearly demonstrate what the graph is measuring. Further to this the lines from the back panel of the graph do not follow round to the side panel on the graph and the square type of base of the graph also crowds the image making it harder to understand the data. Overall a simple 2D line graph would have sufficed, using different line types or colors to distinguish between location along with clear labels of an x and y axis. This could have been carried out in R using base r or using ggplot.
+
+### Critique: Good Visulisation 
+
+Good Visualization by Cédric Scherer that explain the Extinct Plants based on data from the IUCN Red List.
+
+This visulisation can be found in the github under "ggraph.png" and "ggraph1.png"
+
+The visualisation is available on Cédric Scherer own webpage: https://awesomeopensource.com/project/Z3tt/TidyTuesday. This visualisation is extremely easy to understand, it clearly demonstrates with a clear key symbol what the individual plant groups on. The key system then goes on with a leaf like structure whereby leaves on the top each represent methods of current actions and the leaves on the bottom each represent extinction threats. This is followed by a clear colour coding system that provides information on when that plant was last seen. These colours are then filled in on the leaf in the correct categories. This means in one leaf you can gather three main sources of information; the extension threat, the current actions to prevent extension and the year that plant was last seen. Each plant is represented by a single leaf like structure, and there is a single page for each different region of the world for example one for Europe, and one for North America. The colours used link with the green theme and there is an off light green background that easily brings out the colours used in the leaves. In addition, the font is clear, and you can easily see the names of the plants, and the plant names are in alphabetical order so you can easily search for a specific plant and identify it. It is also possible to see the plants that are in danger but there is no information about indication a further need for more research. 
+
+### References 
+BBC. 2020. Australia fires: A visual guide to the bushfire crisis. [Online]. BBC. Available from:  https://www.bbc.co.uk/news/world-australia-50951043) [Accessed 4 March 2021].
+
+Hovhannisyan, S.V. and Grigoryan, K. A. 2016. The main problems and features of the global and local meat production. Annals of Agrarian Science, 14 (4), pp315-318.
+
+Roeder, K. 1994. DNA fingerprinting: A review of the controversy (with discussion). Statistical Science, 9 (2), pp. 222-278.
+
+Scherer, C. 2020. Extinct Plants. [Online]. Opensource. Awesome Open Source. Available from: https://awesomeopensource.com/project/Z3tt/TidyTuesday [Accessed 1 March 2021]. 
+
+
+
